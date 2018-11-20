@@ -9,18 +9,6 @@ ACTIVITIES = ['brushing', 'drinking', 'shoe', 'writing']
 FREQUENCY = 128
 
 
-def load_data(filename):
-    data_2016 = scipy.io.loadmat(filename)
-    mdata = data_2016["data"]
-    activities = mdata.dtype.names
-    # mdata[brushing][0][0] holds 13 elements
-    ndata = {n: mdata[n][0, 0] for n in activities}
-    for k in ndata.keys():
-        ds_type = ndata[k].dtype
-        ndata[k] = {n: ndata[k][n][0, 0] for n in ds_type.names}
-    return ndata
-
-
 def means(data):
     gx = []
     gy = []
@@ -112,7 +100,11 @@ def get_energy(data):
 
 
 def load_dataframe(filename):
-    data = scipy.io.loadmat('../data2016.mat')
+    data = scipy.io.loadmat(filename)
+    acnames = data['data'].dtype.names
+    data['data'].dtype.names = [
+        n if n!='shoelacing' else 'shoe' for n in data['data'].dtype.names
+    ]
 
     gx, gy, gz = means(data)
     labels = get_labels(data)
@@ -129,14 +121,25 @@ def load_dataframe(filename):
         'skewness': skewness,
         'f25': f25,
         'f75': f75,
-        'labels': labels,
+        'label': labels,
     })
     return df
 
 
 def main():
-    df = load_dataframe('../data2016.mat')
+    _df1 = load_dataframe('data/raw_from_matlab/data2016.mat')
+    _df1['brushing'] = _df1.label == 'brushing'
+    _df2 = load_dataframe('data/raw_from_matlab/data2017.mat')
+    _df2['brushing'] = _df2.label == 'brushing'
+    _df3 = load_dataframe('data/raw_from_matlab/data2018.mat')
+    _df3['brushing'] = _df3.label == 'brushing'
 
+    df = pd.concat((_df1, _df2, _df3))
+
+    _df1.to_csv('2016.csv')
+    _df2.to_csv('2017.csv')
+    _df3.to_csv('2018.csv')
+    df.to_csv('all.csv')
 
 
 
