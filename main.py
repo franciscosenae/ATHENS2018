@@ -1,150 +1,74 @@
-import scipy.io
-from scipy.stats import skew
-from scipy.fftpack import fft
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
+
+from sklearn import svm
+from sklearn.metrics import roc_curve
+from sklearn.model_selection import train_test_split
+
+def make_meshgrid(x, y, h=.02):
+    """Create a mesh of points to plot in
+
+    Parameters
+    ----------
+    x: data to base x-axis meshgrid on
+    y: data to base y-axis meshgrid on
+    h: stepsize for meshgrid, optional
+
+    Returns
+    -------
+    xx, yy : ndarray
+    """
+    x_min, x_max = x.min() - 1, x.max() + 1
+    y_min, y_max = y.min() - 1, y.max() + 1
+    xx, yy = np.meshgrid(np.arange(x_min, x_max, h),
+                         np.arange(y_min, y_max, h))
+    return xx, yy
 
 
-ACTIVITIES = ['brushing', 'drinking', 'shoe', 'writing']
-FREQUENCY = 128
+def plot_contours(ax, clf, xx, yy, **params):
+    """Plot the decision boundaries for a classifier.
 
-
-def means(data):
-    gx = []
-    gy = []
-    gz = []
-    for label in ACTIVITIES:
-        activity_data = data['data'][label][0,0]
-        for i in range(activity_data.shape[1]):
-            gx.append(activity_data[0,i]['x'].mean())
-            gy.append(activity_data[0,i]['y'].mean())
-            gz.append(activity_data[0,i]['z'].mean())
-    return gx, gy, gz
-
-
-def get_std(data):
-    std = []
-    for label in ACTIVITIES:
-        activity_data = data['data'][label][0,0]
-        for i in range(activity_data.shape[1]):
-            r = dimension_reduction(activity_data[0,i])
-            std.append(r.std())
-    return std
-
-
-def get_skewness(data):
-    out = []
-    for label in ACTIVITIES:
-        activity_data = data['data'][label][0,0]
-        for i in range(activity_data.shape[1]):
-            r = dimension_reduction(activity_data[0,i])
-            out.append(skew(r)[0])
+    Parameters
+    ----------
+    ax: matplotlib axes object
+    clf: a classifier
+    xx: meshgrid ndarray
+    yy: meshgrid ndarray
+    params: dictionary of params to pass to contourf, optional
+    """
+    Z = clf.predict(np.c_[xx.ravel(), yy.ravel()])
+    Z = Z.reshape(xx.shape)
+    out = ax.contourf(xx, yy, Z, **params)
     return out
-
-
-def get_labels(data):
-    labels = []
-    for label in ACTIVITIES:
-        activity_data = data['data'][label][0,0]
-        for i in range(activity_data.shape[1]):
-            labels.append(label)
-    return labels
-
-
-def dimension_reduction(single_person_activity):
-    return (np.sqrt(single_person_activity['x']**2
-                    + single_person_activity['y']**2
-                    + single_person_activity['z']**2))
-
-
-def remove_dc(data):
-    out = data
-    for label in ACTIVITIES:
-        activity_data = out['data'][label][0,0]
-        for i in range(activity_data.shape[1]):
-            activity_data[0,i]['x'] -= activity_data[0,i]['x'].mean()
-            activity_data[0,i]['y'] -= activity_data[0,i]['y'].mean()
-            activity_data[0,i]['z'] -= activity_data[0,i]['z'].mean()
-    return out
-
-
-def energy25_75(r, freq):
-    N = len(r)
-    R = np.abs(fft(r.flatten()))**2
-    R[0] = 0
-    frequencies = [i * freq / N for i in range(N)]
-    CR = R.cumsum()
-    CR /= CR.max()
-
-    index = np.where(CR < 0.25/2)[0][-1]
-    f25 = frequencies[index]
-
-    index = np.where(CR < 0.75/2)[0][-1]
-    f75 = frequencies[index]
-
-    return f25, f75
-
-
-def get_energy(data):
-    f25 = []
-    f75 = []
-    for label in ACTIVITIES:
-        activity_data = data['data'][label][0,0]
-        for i in range(activity_data.shape[1]):
-            r = dimension_reduction(activity_data[0,i])
-            r = r-r.mean()
-            _f25, _f75 = energy25_75(r, FREQUENCY)
-            f25.append(_f25)
-            f75.append(_f75)
-    return f25, f75
-
-
-def load_dataframe(filename):
-    data = scipy.io.loadmat(filename)
-    acnames = data['data'].dtype.names
-    data['data'].dtype.names = [
-        n if n!='shoelacing' else 'shoe' for n in data['data'].dtype.names
-    ]
-
-    gx, gy, gz = means(data)
-    labels = get_labels(data)
-    std = get_std(data)
-    skewness = get_skewness(data)
-    f25, f75 = get_energy(data)
-
-
-    df = pd.DataFrame({
-        'gx': gx,
-        'gy': gy,
-        'gz': gz,
-        'std': std,
-        'skewness': skewness,
-        'f25': f25,
-        'f75': f75,
-        'label': labels,
-    })
-    return df
 
 
 def main():
-    _df1 = load_dataframe('data/raw_from_matlab/data2016.mat')
-    _df1['brushing'] = _df1.label == 'brushing'
-    _df2 = load_dataframe('data/raw_from_matlab/data2017.mat')
-    _df2['brushing'] = _df2.label == 'brushing'
-    _df3 = load_dataframe('data/raw_from_matlab/data2018.mat')
-    _df3['brushing'] = _df3.label == 'brushing'
+    df = pd.read_csv('data/processed/2018.csv')
 
-    df = pd.concat((_df1, _df2, _df3))
+    X = df[['std', 'gy']]
+    y = df.label == 'brushing'
 
-    _df1.to_csv('data/processed/2016.csv')
-    _df2.to_csv('data/processed/2017.csv')
-    _df3.to_csv('data/processed/2018.csv')
-    df.to_csv('data/processed/all.csv')
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.5,
+                                                        random_state=0)
 
-    sns.pairplot(df.drop('brushing', 1), hue='label')
+    clf = svm.SVC(kernel='linear')
+    # clf = svm.SVC(gamma='scale', kernel='rbf')
+    clf.fit(X_train, y_train)
+
+    fig, sub = plt.subplots(1, 1)
+    ax, = fig.get_axes()
+
+    X0, X1 = X[X.columns[0]], X[X.columns[1]]
+    xx, yy = make_meshgrid(X0, X1)
+    plot_contours(ax, clf, xx, yy,
+                  cmap=plt.cm.coolwarm, alpha=0.8)
+    ax.scatter(X0, X1, c=y, cmap=plt.cm.coolwarm, s=20, edgecolors='k')
     plt.show()
+
+    scores = clf.decision_function(X_test)
+    fpr, tpr, thresholds = roc_curve(y_test, scores)
+    plt.plot(fpr, tpr)
 
 
 if __name__ == '__main__':
