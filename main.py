@@ -3,6 +3,8 @@ from scipy.stats import skew
 from scipy.fftpack import fft
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 
 ACTIVITIES = ['brushing', 'drinking', 'shoe', 'writing']
@@ -136,11 +138,13 @@ def main():
 
     df = pd.concat((_df1, _df2, _df3))
 
-    _df1.to_csv('2016.csv')
-    _df2.to_csv('2017.csv')
-    _df3.to_csv('2018.csv')
-    df.to_csv('all.csv')
+    _df1.to_csv('data/processed/2016.csv')
+    _df2.to_csv('data/processed/2017.csv')
+    _df3.to_csv('data/processed/2018.csv')
+    df.to_csv('data/processed/all.csv')
 
+    sns.pairplot(df.drop('brushing', 1), hue='label')
+    plt.show()
 
 
 if __name__ == '__main__':
