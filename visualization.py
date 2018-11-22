@@ -42,7 +42,7 @@ def _plot_contours(ax, clf, xx, yy, **params):
     params: dictionary of params to pass to contourf, optional
     """
     Z = clf.predict(np.c_[xx.ravel(), yy.ravel()])
-    Z = Z.reshape(xx.shape)
+    Z = 1-Z.reshape(xx.shape)
     out = ax.contourf(xx, yy, Z, **params)
     return out
 
@@ -57,7 +57,7 @@ def plot_contours(X, y, clf, ax=None):
 
     _plot_contours(ax, clf, xx, yy,
                    cmap=plt.cm.coolwarm, alpha=0.4)
-    ax.scatter(X0, X1, c=y, cmap=plt.cm.coolwarm, s=20, edgecolors='k')
+    ax.scatter(X0, X1, c=1-y, cmap=plt.cm.coolwarm, s=100, edgecolors='k')
     return ax
 
 
