@@ -1,3 +1,4 @@
+from pprint import pprint
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -54,9 +55,9 @@ def plot_contours(X, y, clf, ax=None):
     X0, X1 = X[X.columns[0]], X[X.columns[1]]
     xx, yy = _make_meshgrid(X0, X1)
 
-    ax.scatter(X0, X1, c=y, cmap=plt.cm.coolwarm, s=20, edgecolors='k')
     _plot_contours(ax, clf, xx, yy,
-                  cmap=plt.cm.coolwarm, alpha=0.8)
+                   cmap=plt.cm.coolwarm, alpha=0.4)
+    ax.scatter(X0, X1, c=y, cmap=plt.cm.coolwarm, s=20, edgecolors='k')
     return ax
 
 
@@ -66,15 +67,56 @@ def plot_roc(X, y, clf):
     return plt.plot(fpr, tpr)
 
 
-def plot_confusion_matrix(X, y, clf):
-    confusion_matrix = sk.metrics.confusion_matrix(y, clf.predict(X))
-    df_cm = pd.DataFrame(
+def plot_confusion_matrix(y_true, y_predicted):
+    confusion_matrix = sk.metrics.confusion_matrix(
+        y_true, y_predicted)
+    # print(confusion_matrix)
+    fig, sub = plt.subplots(1, 2)
+    g = sns.heatmap(
+        confusion_matrix / confusion_matrix.sum(axis=1)[:, None],
+        annot=True,
+        ax=sub[0],
+        cmap='Greens')
+    g.set_ylabel('True')
+    g.set_xlabel('Predicted')
+    g.set_title('Relative values')
+    g = sns.heatmap(
         confusion_matrix,
-        index = X.columns,
-        columns = X.columns)
-    return sns.heatmap(
-        df_cm,
-        annot=True)
+        annot=True,
+        ax=sub[1],
+        cmap='Greens')
+    g.set_ylabel('True')
+    g.set_xlabel('Predicted')
+    g.set_title('Absolute values')
+    return g
+
+
+def results_on_years(clf, FEATURES_USED, years=[2016, 2017]):
+    if len(FEATURES_USED) == 2:
+        fig, sub = plt.subplots(1, 2)
+    for i, year in enumerate(years):
+
+        _df = pd.read_csv(f'data/processed/{year}.csv')
+        X = _df[FEATURES_USED]
+        y = _df.label == 'brushing'
+
+        print(f'Metrics on the {year} data:')
+        print_metrics(y, clf.predict(X))
+
+        if len(FEATURES_USED) == 2:
+            ax = plot_contours(X, y, clf, ax=sub[i])
+            ax.set_title(year)
+
+        plot_confusion_matrix(y, clf.predict(X))
+
+
+def print_metrics(y_true, y_predicted):
+    metrics = {
+        'Accuracy': sk.metrics.accuracy_score(y_true, y_predicted),
+        'Precision': sk.metrics.precision_score(y_true, y_predicted),
+        'Recall': sk.metrics.recall_score(y_true, y_predicted)
+}
+    pprint(metrics)
 
 
 def main():
@@ -84,6 +126,7 @@ def main():
     y = df.label == 'brushing'
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.5,
+
                                                         random_state=0)
 
     clf = svm.SVC(kernel='linear')
