@@ -13,41 +13,37 @@ def means(data):
     gx = []
     gy = []
     gz = []
-    for label in ACTIVITIES:
-        activity_data = data['data'][label][0,0]
-        for i in range(activity_data.shape[1]):
-            gx.append(activity_data[0,i]['x'].mean())
-            gy.append(activity_data[0,i]['y'].mean())
-            gz.append(activity_data[0,i]['z'].mean())
+    for ac in data.keys():
+        for s in data[ac]:
+            gx.append(s['x'].mean())
+            gy.append(s['y'].mean())
+            gz.append(s['z'].mean())
     return gx, gy, gz
 
 
 def get_std(data):
     std = []
-    for label in ACTIVITIES:
-        activity_data = data['data'][label][0,0]
-        for i in range(activity_data.shape[1]):
-            r = dimension_reduction(activity_data[0,i])
+    for ac in data.keys():
+        for s in data[ac]:
+            r = dimension_reduction(s)
             std.append(r.std())
     return std
 
 
 def get_skewness(data):
     out = []
-    for label in ACTIVITIES:
-        activity_data = data['data'][label][0,0]
-        for i in range(activity_data.shape[1]):
-            r = dimension_reduction(activity_data[0,i])
+    for ac in data.keys():
+        for s in data[ac]:
+            r = dimension_reduction(s)
             out.append(skew(r)[0])
     return out
 
 
 def get_labels(data):
     labels = []
-    for label in ACTIVITIES:
-        activity_data = data['data'][label][0,0]
-        for i in range(activity_data.shape[1]):
-            labels.append(label)
+    for ac in data.keys():
+        for s in data[ac]:
+            labels.append(ac)
     return labels
 
 
@@ -59,12 +55,11 @@ def dimension_reduction(single_person_activity):
 
 def remove_dc(data):
     out = data
-    for label in ACTIVITIES:
-        activity_data = out['data'][label][0,0]
-        for i in range(activity_data.shape[1]):
-            activity_data[0,i]['x'] -= activity_data[0,i]['x'].mean()
-            activity_data[0,i]['y'] -= activity_data[0,i]['y'].mean()
-            activity_data[0,i]['z'] -= activity_data[0,i]['z'].mean()
+    for ac in data.keys():
+        for s in data[ac]:
+            s['x'] -= s['x'].mean()
+            s['y'] -= s['y'].mean()
+            s['z'] -= s['z'].mean()
     return out
 
 
@@ -88,10 +83,9 @@ def energy25_75(r, freq):
 def get_energy(data):
     f25 = []
     f75 = []
-    for label in ACTIVITIES:
-        activity_data = data['data'][label][0,0]
-        for i in range(activity_data.shape[1]):
-            r = dimension_reduction(activity_data[0,i])
+    for ac in data.keys():
+        for s in data[ac]:
+            r = dimension_reduction(s)
             r = r-r.mean()
             _f25, _f75 = energy25_75(r, FREQUENCY)
             f25.append(_f25)
@@ -99,12 +93,29 @@ def get_energy(data):
     return f25, f75
 
 
+def format_data(data):
+    out = {}
+    for label in ACTIVITIES:
+        out[label] = []
+        activity_data = data['data'][label][0,0]
+        for i in range(activity_data.shape[1]):
+            out[label].append({
+                'x': activity_data[0,i]['x'],
+                'y': activity_data[0,i]['y'],
+                'z': activity_data[0,i]['z'],
+            })
+    return out
+
+
 def load_dataframe(filename):
     data = scipy.io.loadmat(filename)
     acnames = data['data'].dtype.names
+    print(acnames)
     data['data'].dtype.names = [
         n if n!='shoelacing' else 'shoe' for n in data['data'].dtype.names
     ]
+
+    data = format_data(data)
 
     gx, gy, gz = means(data)
     labels = get_labels(data)
@@ -124,3 +135,23 @@ def load_dataframe(filename):
         'label': labels,
     })
     return df
+
+
+def load_testdata(path='data/raw_from_matlab/testData.mat'):
+    data = scipy.io.loadmat(path)
+    _names = data['data'].dtype.names
+    assert _names == ('x', 'y', 'z', 'Label')
+
+    out = {}
+    out['x'] = data['data']['x'][0, 0].flatten()
+    out['y'] = data['data']['y'][0, 0].flatten()
+    out['z'] = data['data']['z'][0, 0].flatten()
+    out['label'] = data['data']['Label'][0, 0].flatten()
+    return pd.DataFrame(out)
+
+
+def make_windowed(data, size=20, steps=2, freq=128):
+    """Size and steps in seconds"""
+    _window_start, _window_end = 0, size*128
+    while _window_end < len(testdata):
+        data.iloc[_window_start:_window_end]
