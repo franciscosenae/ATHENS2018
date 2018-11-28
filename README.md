@@ -47,12 +47,16 @@ a single label for each point in time. Majority voting worked well for this task
 ## Setup
 Install all necessary packages, ideally in a
 [virtual environment](https://docs.python.org/3/library/venv.html)
-```pip install -r requirements.txt```
+```bash
+pip install -r requirements.txt
+```
 
 
 ## Usage
 The jupyter notebook `Assignment.ipynb` provides all the function calls and goes
 through the described approach step by step.
 Open jupyter:
-```jupyter notebook```
+```bash
+jupyter notebook
+```
 Then go through `Assignment.ipynb` in your browser.
