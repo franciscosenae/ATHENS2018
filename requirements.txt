@@ -5,3 +5,4 @@ scipy
 seaborn
 matplotlib
 tqdm
+jupyter
