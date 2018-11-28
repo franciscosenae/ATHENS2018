@@ -58,6 +58,8 @@ def plot_contours(X, y, clf, ax=None):
     _plot_contours(ax, clf, xx, yy,
                    cmap=plt.cm.coolwarm, alpha=0.4)
     ax.scatter(X0, X1, c=1-y, cmap=plt.cm.coolwarm, s=100, edgecolors='k')
+    ax.set_xlabel(X.columns[0])
+    ax.set_ylabel(X.columns[1])
     return ax
 
 
