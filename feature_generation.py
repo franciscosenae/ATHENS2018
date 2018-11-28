@@ -5,11 +5,11 @@ import os
 
 import pandas as pd
 
-from utils import *
+from data_handling import *
 
 
 
-def main():
+def generate_features_from_raw_data():
     dfs = []
     for y in [2016, 2017, 2018]:
         data_path = os.path.join('data/raw_from_matlab', f'data{y}.mat')
@@ -24,6 +24,10 @@ def main():
     save_path = 'data/processed/all.csv'
     print(f'Saving full data with features to {save_path}')
     full_df.to_csv(save_path, index=False)
+
+
+def main():
+    generate_features_from_raw_data()
 
 
 if __name__ == '__main__':
